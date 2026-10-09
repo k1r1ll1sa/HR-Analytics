@@ -4,6 +4,7 @@ import {
   RegistrationApiError,
   registerCompany,
   registerEmployee,
+  saveProfile,
   type RegisterFieldErrors,
   type RegisterFieldName,
   type RegisterResponse,
@@ -95,7 +96,9 @@ function validateRegistration(
     } else if (!uuidPattern.test(companyId)) {
       errors.company_id = 'Введите корректный UUID компании'
     }
-    if (departmentId && !uuidPattern.test(departmentId)) {
+    if (!departmentId) {
+      errors.department_id = 'Введите ID отдела'
+    } else if (!uuidPattern.test(departmentId)) {
       errors.department_id = 'Введите корректный UUID отдела'
     }
   }
@@ -187,11 +190,22 @@ export default function RegisterPage() {
                 password,
               },
               company_id: getValue(formData, 'company_id'),
-              department_id:
-                getValue(formData, 'department_id') || undefined,
+              department_id: getValue(formData, 'department_id'),
             })
 
       setResult(response)
+      saveProfile(
+        {
+          userId: response.user.id,
+          email: response.user.email,
+          fullName: response.user.full_name,
+          role: response.user.role,
+          companyId: response.company?.id ?? null,
+          companyName: response.company?.name ?? '',
+          companyInn: response.company?.inn ?? '',
+        },
+        true,
+      )
     } catch (requestError) {
       if (requestError instanceof RegistrationApiError) {
         setFieldErrors(requestError.fieldErrors)
@@ -290,7 +304,12 @@ export default function RegisterPage() {
         </button>
       </div>
 
-      <form className="auth-form" noValidate onSubmit={handleSubmit}>
+      <form
+        key={registrationType}
+        className="auth-form"
+        noValidate
+        onSubmit={handleSubmit}
+      >
         {registrationType === 'company' ? (
           <fieldset>
             <legend>Данные компании</legend>
@@ -339,9 +358,9 @@ export default function RegisterPage() {
               name="department_id"
               label="ID отдела"
               placeholder="UUID отдела"
-              hint="Необязательное поле"
               error={fieldErrors.department_id}
               onChange={() => clearFieldError('department_id')}
+              required
             />
           </fieldset>
         )}

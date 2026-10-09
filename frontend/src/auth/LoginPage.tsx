@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
+import {
+  getProfile,
+  LoginApiError,
+  login,
+  readTokenClaims,
+  saveProfile,
+  setAuthToken,
+} from '../api/auth'
 import { AuthLayout } from './AuthLayout'
 import { PasswordField, TextField } from './FormFields'
 
@@ -11,20 +19,22 @@ interface LoginFieldErrors {
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function LoginPage() {
-  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     document.title = 'Вход — HR Analytics'
   }, [])
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setMessage('')
+    setError('')
 
     const formData = new FormData(event.currentTarget)
     const email = String(formData.get('email') ?? '').trim()
     const password = String(formData.get('password') ?? '')
+    const remember = formData.get('remember') === 'on'
     const errors: LoginFieldErrors = {}
 
     if (!email) {
@@ -45,13 +55,49 @@ export default function LoginPage() {
     }
 
     setFieldErrors({})
-    setMessage(
-      'Форма готова. Для входа необходимо добавить endpoint авторизации на бэкенде.',
-    )
+    setIsSubmitting(true)
+
+    try {
+      const token = await login({ email, password })
+      const claims = readTokenClaims(token.access_token)
+      const previous = getProfile()
+      const known =
+        previous !== null && previous.email === email ? previous : null
+
+      setAuthToken(token.access_token, remember)
+      saveProfile(
+        {
+          userId: claims.userId,
+          email,
+          fullName: known?.fullName ?? '',
+          role: claims.role,
+          companyId: known?.companyId ?? null,
+          companyName: known?.companyName ?? '',
+          companyInn: known?.companyInn ?? '',
+        },
+        remember,
+      )
+      window.location.replace('/dashboard')
+    } catch (requestError) {
+      if (requestError instanceof LoginApiError) {
+        setFieldErrors(requestError.fieldErrors)
+        if (Object.keys(requestError.fieldErrors).length === 0) {
+          setError(requestError.message)
+        }
+      } else {
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : 'Не удалось выполнить вход',
+        )
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const clearFieldError = (field: keyof LoginFieldErrors) => {
-    setMessage('')
+    setError('')
     setFieldErrors((current) => {
       if (!current[field]) {
         return current
@@ -105,14 +151,15 @@ export default function LoginPage() {
           <a href="mailto:hr-analytics@example.com">Забыли пароль?</a>
         </div>
 
-        {message && (
-          <div className="form-notice" role="status">
-            {message}
+        {error && (
+          <div className="form-error" role="alert">
+            {error}
           </div>
         )}
 
-        <button className="submit-button" type="submit">
-          Войти <ArrowRight size={18} />
+        <button className="submit-button" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Входим…' : 'Войти'}
+          {!isSubmitting && <ArrowRight size={18} />}
         </button>
       </form>
     </AuthLayout>
