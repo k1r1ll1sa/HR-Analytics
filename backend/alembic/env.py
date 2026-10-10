@@ -20,6 +20,7 @@ from app.core.config import settings
 from app.core.database import Base
 from app.models.user import User
 from app.models.company import Company, Department, Employee, Position
+from app.models.survey import Survey, SurveyQuestion, SurveySession, SurveyAssignment, SurveyAnswer
 
 # 4. ОТЛАДКА: Проверяем URL и таблицы
 print("=" * 70)
