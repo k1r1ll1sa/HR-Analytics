@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Maximize2, Minimize2, Pencil, Trash2 } from 'lucide-react'
 import type { DepartmentRow } from './dashboardStorage'
-import { collectDescendantIds, plural } from './dashboardUtils'
+import { plural } from './dashboardUtils'
 
 interface OrganizationChartProps {
   departments: DepartmentRow[]
@@ -154,7 +154,7 @@ export function OrganizationChart({
         <button
           type="button"
           className="org-tool"
-          aria-label={`Добавить отдел рядом с «${department.name}»`}
+          aria-label={`Добавить подотдел в «${department.name}»`}
           disabled={Boolean(busyId)}
           onClick={() => leaveFullscreenThen(() => onAddChild(department))}
         >
@@ -176,21 +176,27 @@ export function OrganizationChart({
     </div>
   )
 
-  const renderBranch = (department: DepartmentRow) => {
-    const nested = departments.filter((item) =>
-      collectDescendantIds(departments, department.id).has(item.id),
+  const renderBranch = (
+    department: DepartmentRow,
+    visited: Set<string>,
+  ) => {
+    if (visited.has(department.id)) {
+      return null
+    }
+
+    const nextVisited = new Set(visited)
+    nextVisited.add(department.id)
+
+    const children = departments.filter(
+      (item) => item.parentId === department.id,
     )
 
     return (
       <div className="org-branch" key={department.id}>
         {renderNode(department)}
-        {nested.length > 0 && (
+        {children.length > 0 && (
           <div className="org-level">
-            {nested.map((child) => (
-              <div className="org-branch" key={child.id}>
-                {renderNode(child)}
-              </div>
-            ))}
+            {children.map((child) => renderBranch(child, nextVisited))}
           </div>
         )}
       </div>
@@ -258,7 +264,9 @@ export function OrganizationChart({
 
               {roots.length > 0 && (
                 <div className="org-level">
-                  {roots.map((department) => renderBranch(department))}
+                  {roots.map((department) =>
+                    renderBranch(department, new Set()),
+                  )}
                 </div>
               )}
             </div>
