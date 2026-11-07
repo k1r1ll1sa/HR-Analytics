@@ -11,7 +11,7 @@ from app.core.security import get_password_hash
 
 class RegistrationService:
     @staticmethod
-    async def register_company_with_owner(db: Session, company_data: dict, user_data: dict):
+    async def register_company_with_owner(db: AsyncSession, company_data: dict, user_data: dict):
         try:
             user = User(
                 full_name=user_data['full_name'],

@@ -47,7 +47,7 @@ class Survey(Base):
     sessions = relationship("SurveySession", back_populates="survey", cascade="all, delete-orphan")
 
 
-# === 2. ВОПРОСЫ В ШАБЛОНЕ ===
+# Вопросы в шаблоне
 class SurveyQuestion(Base):
     __tablename__ = "survey_questions"
 
@@ -65,7 +65,7 @@ class SurveyQuestion(Base):
     answers = relationship("SurveyAnswer", back_populates="question", cascade="all, delete-orphan")
 
 
-# СЕССИЯ ОПРОСА (Конкретный запуск, например "Оценка Q3 2026") ===
+# Сессия опроса (Конкретный запуск, к примеру "Оценка Q3 2026")
 class SurveySession(Base):
     __tablename__ = "survey_sessions"
 
@@ -85,8 +85,8 @@ class SurveySession(Base):
     assignments = relationship("SurveyAssignment", back_populates="session", cascade="all, delete-orphan")
 
 
-# НАЗНАЧЕНИЕ (Кто кого оценивает в рамках сессии)
-# Это сердце метода "360 градусов": респондент оценивает таргета
+# Назначение
+# Кто кого оценивает в рамках сессии
 class SurveyAssignment(Base):
     __tablename__ = "survey_assignments"
 
@@ -110,7 +110,7 @@ class SurveyAssignment(Base):
     answers = relationship("SurveyAnswer", back_populates="assignment", cascade="all, delete-orphan")
 
 
-# ОТВЕТЫ (Защищены от просмотра другими сотрудниками)
+# Ответы
 class SurveyAnswer(Base):
     __tablename__ = "survey_answers"
 
@@ -134,8 +134,7 @@ class SurveyAnswer(Base):
     question = relationship("SurveyQuestion", back_populates="answers")
 
 
-# АГРЕГИРОВАННЫЕ РЕЗУЛЬТАТЫ ОПРОСА (Для дашбордов и аналитики)
-# Возможно потом откажемся, посмотрим
+# Агрегированные результаты опроса
 class SurveyResult(Base):
     __tablename__ = "survey_results"
 
