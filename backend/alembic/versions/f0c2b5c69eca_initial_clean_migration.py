@@ -1,8 +1,8 @@
-"""initial clean migration with surveys and many-to-many
+"""initial clean migration
 
-Revision ID: 1a643079fd3d
+Revision ID: f0c2b5c69eca
 Revises: 
-Create Date: 2026-10-30 17:19:08.257408
+Create Date: 2026-11-08 18:30:33.124762
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '1a643079fd3d'
+revision: str = 'f0c2b5c69eca'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -28,6 +28,13 @@ def upgrade() -> None:
     sa.Column('role', sa.String(length=50), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.Column('phone', sa.String(length=50), nullable=True),
+    sa.Column('avatar_url', sa.String(length=500), nullable=True),
+    sa.Column('telegram', sa.String(length=100), nullable=True),
+    sa.Column('city', sa.String(length=100), nullable=True),
+    sa.Column('about', sa.Text(), nullable=True),
+    sa.Column('notify_by_email', sa.Boolean(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
