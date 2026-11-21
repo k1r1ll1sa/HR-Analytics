@@ -122,34 +122,36 @@ function Header({
           )}
         </nav>
 
-        {session ? (
-          <span className="header-account">
-            <a className="header-user" href="/profile">
-              {accountName}
+        <div className="header-actions">
+          {session ? (
+            <span className="header-account">
+              <a className="header-user" href="/profile">
+                {accountName}
+              </a>
+              <button
+                className="button button-small button-secondary"
+                type="button"
+                onClick={handleLogout}
+              >
+                Выйти
+              </button>
+            </span>
+          ) : (
+            <a className="button button-small header-button" href="/register">
+              Регистрация
             </a>
-            <button
-              className="button button-small button-secondary"
-              type="button"
-              onClick={handleLogout}
-            >
-              Выйти
-            </button>
-          </span>
-        ) : (
-          <a className="button button-small header-button" href="/register">
-            Регистрация
-          </a>
-        )}
+          )}
 
-        <button
-          className="menu-button"
-          type="button"
-          aria-label={isMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
-          aria-expanded={isMenuOpen}
-          onClick={() => setIsMenuOpen((value) => !value)}
-        >
-          {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
+          <button
+            className="menu-button"
+            type="button"
+            aria-label={isMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
+            aria-expanded={isMenuOpen}
+            onClick={() => setIsMenuOpen((value) => !value)}
+          >
+            {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
       </div>
     </header>
   )

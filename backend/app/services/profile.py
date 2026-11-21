@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.models.user import User
-from app.models.company import Employee, Department, Company
+from app.models.company import Employee, Position
 from app.schemas.profile import ProfileResponse, ProfileUpdateRequest
 
 
@@ -18,7 +18,8 @@ class ProfileService:
             .where(User.id == user_id)
             .options(
                 selectinload(User.employee).selectinload(Employee.company),
-                selectinload(User.employee).selectinload(Employee.department)
+                selectinload(User.employee).selectinload(Employee.departments),
+                selectinload(User.employee).selectinload(Employee.position),
             )
         )
         user = result.scalar_one_or_none()
@@ -47,8 +48,8 @@ class ProfileService:
                 "employee_id": emp.id,
                 "company_id": emp.company_id,
                 "company_name": emp.company.name if emp.company else None,
-                "position": emp.position,
-                "department_names": [emp.department.name] if emp.department else [],
+                "position": emp.position.title if emp.position else None,
+                "department_names": [d.name for d in (emp.departments or [])],
                 "hire_date": emp.hire_date,
             })
 
@@ -79,7 +80,23 @@ class ProfileService:
                 setattr(user, field, value)
 
         if profile_data.position is not None and user.employee:
-            user.employee.position = profile_data.position
+            title = profile_data.position.strip()
+            emp = user.employee
+            if not title:
+                emp.position_id = None
+            else:
+                found = await db.execute(
+                    select(Position).where(
+                        Position.company_id == emp.company_id,
+                        Position.title == title,
+                    )
+                )
+                position = found.scalar_one_or_none()
+                if position is None:
+                    position = Position(company_id=emp.company_id, title=title)
+                    db.add(position)
+                    await db.flush()
+                emp.position_id = position.id
 
         await db.commit()
         await db.refresh(user)

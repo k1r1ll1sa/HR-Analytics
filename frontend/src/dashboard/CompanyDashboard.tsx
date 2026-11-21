@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { BookOpen, Building2 } from 'lucide-react'
+import { BookOpen, Building2, ClipboardList } from 'lucide-react'
 import './CompanyDashboard.css'
 import {
   clearAuthToken,
@@ -40,6 +40,7 @@ import {
 import { CoursesPanel } from './CoursesPanel'
 import { DashboardHeader } from './DashboardHeader'
 import { StructurePanel } from './StructurePanel'
+import '../surveys/Surveys.css'
 
 const initialCourseCatalog: CourseRow[] = [
   { id: 'c1', title: 'Лидерство и обратная связь' },
@@ -423,6 +424,10 @@ export default function CompanyDashboard() {
             <BookOpen size={17} />
             Обучение
           </button>
+          <a href="/surveys">
+            <ClipboardList size={17} />
+            Опросники
+          </a>
         </nav>
 
         <section className="dashboard-panel" aria-labelledby="panel-title">

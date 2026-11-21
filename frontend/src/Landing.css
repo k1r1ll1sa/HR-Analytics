@@ -66,11 +66,15 @@ button {
 
 .header-content {
   height: 100%;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
+  column-gap: 16px;
 }
 
 .logo {
+  grid-column: 1;
+  justify-self: start;
   display: inline-flex;
   align-items: center;
   gap: 9px;
@@ -90,9 +94,18 @@ button {
 }
 
 .navigation {
+  grid-column: 2;
   display: flex;
   gap: 32px;
-  margin-inline: auto;
+  margin: 0;
+}
+
+.header-actions {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .navigation a {
@@ -107,7 +120,6 @@ button {
 
 .menu-button {
   display: none;
-  margin-left: auto;
   padding: 5px;
   color: var(--color-text);
   border: 0;

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
 import {
-  findKnownProfile,
   LoginApiError,
   login,
   readTokenClaims,
@@ -10,7 +9,7 @@ import {
   setAuthToken,
   type StoredProfile,
 } from '../api/auth'
-import { resolveProfileDepartments } from '../dashboard/dashboardStorage'
+import { getMyProfile, toStoredProfile } from '../api/profile'
 import { AuthLayout } from './AuthLayout'
 import { PasswordField, TextField } from './FormFields'
 
@@ -62,34 +61,33 @@ export default function LoginPage() {
 
     try {
       const token = await login({ email, password })
-      const claims = readTokenClaims(token.access_token)
-      const known = findKnownProfile(claims.userId, email)
-      const profile: StoredProfile = {
-        userId: claims.userId,
-        email,
-        fullName: known?.fullName ?? '',
-        role: claims.role,
-        companyId: known?.companyId ?? null,
-        companyName: known?.companyName ?? '',
-        companyInn: known?.companyInn ?? '',
-        phone: known?.phone ?? '',
-        photo: known?.photo ?? '',
-        position: known?.position ?? '',
-        departmentIds: known?.departmentIds ?? [],
-        departmentNames: resolveProfileDepartments({
-          companyId: known?.companyId ?? null,
-          fullName: known?.fullName ?? '',
+      setAuthToken(token.access_token, remember)
+
+      let profile: StoredProfile
+
+      try {
+        profile = toStoredProfile(await getMyProfile())
+      } catch {
+        const claims = readTokenClaims(token.access_token)
+        profile = {
+          userId: claims.userId,
+          email,
+          fullName: '',
           role: claims.role,
-          departmentNames: known?.departmentNames ?? [],
-          departmentIds: known?.departmentIds ?? [],
-        }),
-        city: known?.city ?? '',
-        telegram: known?.telegram ?? '',
-        about: known?.about ?? '',
-        notifyByEmail: known?.notifyByEmail ?? true,
+          companyId: null,
+          companyName: '',
+          companyInn: '',
+          phone: '',
+          photo: '',
+          position: '',
+          departmentNames: [],
+          city: '',
+          telegram: '',
+          about: '',
+          notifyByEmail: true,
+        }
       }
 
-      setAuthToken(token.access_token, remember)
       saveProfile(profile, remember)
       rememberProfile(profile)
       window.location.replace('/')

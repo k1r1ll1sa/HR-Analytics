@@ -10,12 +10,16 @@ import { ArrowLeft, Camera } from 'lucide-react'
 import {
   clearAuthToken,
   clearProfile,
-  getProfile,
   hasDashboardAccess,
-  persistCurrentProfile,
-  type StoredProfile,
 } from '../api/auth'
-import { resolveProfileDepartments } from '../dashboard/dashboardStorage'
+import {
+  ProfileApiError,
+  canSendAvatarUrl,
+  getMyProfile,
+  syncSessionProfile,
+  updateMyProfile,
+  type UserProfile,
+} from '../api/profile'
 import { DashboardHeader } from '../dashboard/DashboardHeader'
 import { roleLabels } from '../dashboard/dashboardUtils'
 import '../dashboard/CompanyDashboard.css'
@@ -115,49 +119,130 @@ function loadPhoto(file: File) {
 
 export default function ProfilePage() {
   const photoInputRef = useRef<HTMLInputElement>(null)
-  const [profile, setProfile] = useState<StoredProfile | null>(() => {
-    const current = getProfile()
-
-    if (!current) {
-      return null
-    }
-
-    return {
-      ...current,
-      departmentNames: resolveProfileDepartments(current),
-    }
-  })
-  const [fullName, setFullName] = useState(profile?.fullName ?? '')
-  const [phone, setPhone] = useState(profile?.phone ?? '')
-  const [photo, setPhoto] = useState(profile?.photo ?? '')
-  const [position, setPosition] = useState(profile?.position ?? '')
-  const [city, setCity] = useState(profile?.city ?? '')
-  const [telegram, setTelegram] = useState(profile?.telegram ?? '')
-  const [about, setAbout] = useState(profile?.about ?? '')
-  const [notifyByEmail, setNotifyByEmail] = useState(
-    profile?.notifyByEmail ?? true,
-  )
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [fullName, setFullName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [photo, setPhoto] = useState('')
+  const [position, setPosition] = useState('')
+  const [city, setCity] = useState('')
+  const [telegram, setTelegram] = useState('')
+  const [about, setAbout] = useState('')
+  const [notifyByEmail, setNotifyByEmail] = useState(true)
   const [nameError, setNameError] = useState('')
   const [phoneError, setPhoneError] = useState('')
   const [telegramError, setTelegramError] = useState('')
   const [photoError, setPhotoError] = useState('')
   const [saved, setSaved] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [loadError, setLoadError] = useState('')
+  const [saveError, setSaveError] = useState('')
+
+  const fillProfile = (next: UserProfile, keepPhoto?: string) => {
+    const resolved = {
+      ...next,
+      photo: keepPhoto ?? next.photo,
+    }
+    setProfile(resolved)
+    setFullName(resolved.fullName)
+    setPhone(resolved.phone)
+    setPhoto(resolved.photo)
+    setPosition(resolved.position)
+    setCity(resolved.city)
+    setTelegram(resolved.telegram)
+    setAbout(resolved.about)
+    setNotifyByEmail(resolved.notifyByEmail)
+    syncSessionProfile(resolved)
+  }
 
   useEffect(() => {
     document.title = 'Профиль — HR Analytics'
   }, [])
 
   useEffect(() => {
-    if (!profile) {
-      return
+    let cancelled = false
+
+    const load = async () => {
+      setIsLoading(true)
+      setLoadError('')
+
+      try {
+        const next = await getMyProfile()
+
+        if (cancelled) {
+          return
+        }
+
+        fillProfile(next)
+      } catch (caught) {
+        if (cancelled) {
+          return
+        }
+
+        if (caught instanceof ProfileApiError && caught.status === 401) {
+          clearAuthToken()
+          clearProfile()
+          window.location.replace('/login')
+          return
+        }
+
+        setLoadError(
+          caught instanceof ProfileApiError
+            ? caught.message
+            : 'Не удалось загрузить профиль',
+        )
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
+        }
+      }
     }
 
-    persistCurrentProfile(profile)
-  }, [profile])
+    void load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (isLoading) {
+    return (
+      <main className="dashboard">
+        <DashboardHeader
+          userName="Пользователь"
+          companyName=""
+          roleLabel="—"
+          onLogout={() => {
+            clearAuthToken()
+            clearProfile()
+          }}
+        />
+        <div className="profile-layout">
+          <p className="profile-status">Загрузка профиля…</p>
+        </div>
+      </main>
+    )
+  }
 
   if (!profile) {
-    window.location.replace('/login')
-    return null
+    return (
+      <main className="dashboard">
+        <DashboardHeader
+          userName="Пользователь"
+          companyName=""
+          roleLabel="—"
+          onLogout={() => {
+            clearAuthToken()
+            clearProfile()
+          }}
+        />
+        <div className="profile-layout">
+          <p className="dashboard-form-error" role="alert">
+            {loadError || 'Не удалось загрузить профиль'}
+          </p>
+        </div>
+      </main>
+    )
   }
 
   const roleLabel = roleLabels[profile.role] ?? profile.role
@@ -211,9 +296,10 @@ export default function ProfilePage() {
     }
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setSaved(false)
+    setSaveError('')
 
     const nextName = fullName.trim()
     const nextPhone = phone.trim()
@@ -249,26 +335,40 @@ export default function ProfilePage() {
       return
     }
 
-    const nextProfile: StoredProfile = {
-      ...profile,
-      fullName: nextName,
+    const formattedTelegram = nextTelegram ? `@${nextTelegram}` : ''
+    const payload = {
+      full_name: nextName,
       phone: nextPhone,
-      photo,
-      position: position.trim(),
-      departmentNames: resolveProfileDepartments({
-        ...profile,
-        fullName: nextName,
-      }),
+      telegram: formattedTelegram,
       city: city.trim(),
-      telegram: nextTelegram ? `@${nextTelegram}` : '',
       about: about.trim(),
-      notifyByEmail,
+      notify_by_email: notifyByEmail,
+      position: position.trim(),
+      ...(canSendAvatarUrl(photo) ? { avatar_url: photo } : {}),
     }
 
-    persistCurrentProfile(nextProfile)
-    setProfile(nextProfile)
-    setTelegram(nextProfile.telegram)
-    setSaved(true)
+    setIsSaving(true)
+
+    try {
+      const updated = await updateMyProfile(payload)
+      fillProfile(updated, canSendAvatarUrl(photo) ? undefined : photo)
+      setSaved(true)
+    } catch (caught) {
+      if (caught instanceof ProfileApiError && caught.status === 401) {
+        clearAuthToken()
+        clearProfile()
+        window.location.replace('/login')
+        return
+      }
+
+      setSaveError(
+        caught instanceof ProfileApiError
+          ? caught.message
+          : 'Не удалось сохранить профиль',
+      )
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -346,6 +446,11 @@ export default function ProfilePage() {
             {saved && (
               <p className="profile-success" role="status">
                 Настройки сохранены
+              </p>
+            )}
+            {saveError && (
+              <p className="dashboard-form-error" role="alert">
+                {saveError}
               </p>
             )}
             {photoError && (
@@ -508,8 +613,8 @@ export default function ProfilePage() {
             </label>
 
             <div className="dashboard-form-actions">
-              <button type="submit" className="dashboard-btn">
-                Сохранить
+              <button type="submit" className="dashboard-btn" disabled={isSaving}>
+                {isSaving ? 'Сохранение…' : 'Сохранить'}
               </button>
               {photo && (
                 <button

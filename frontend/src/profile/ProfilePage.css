@@ -19,6 +19,12 @@
   color: var(--dash-primary);
 }
 
+.profile-status {
+  margin: 0;
+  font-size: 14px;
+  color: var(--dash-muted);
+}
+
 .profile-layout h1 {
   margin: 0 0 20px;
   font-size: 26px;
