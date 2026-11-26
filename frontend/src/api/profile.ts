@@ -7,7 +7,8 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? ''
 const PROFILE_PATH = '/api/v1/users/me/profile'
-const AVATAR_URL_MAX = 500
+const AVATAR_SIZE = 256
+const AVATAR_QUALITY = 0.82
 
 export class ProfileApiError extends Error {
   status: number
@@ -128,8 +129,46 @@ export function syncSessionProfile(profile: UserProfile) {
   persistCurrentProfile(toStoredProfile(profile))
 }
 
-export function canSendAvatarUrl(photo: string) {
-  return photo.length === 0 || photo.length <= AVATAR_URL_MAX
+export async function fileToAvatarUrl(file: File): Promise<string> {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Выберите файл изображения')
+  }
+
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const next = new Image()
+    const url = URL.createObjectURL(file)
+
+    next.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve(next)
+    }
+
+    next.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Не удалось загрузить фото'))
+    }
+
+    next.src = url
+  })
+
+  const canvas = document.createElement('canvas')
+  canvas.width = AVATAR_SIZE
+  canvas.height = AVATAR_SIZE
+  const context = canvas.getContext('2d')
+
+  if (!context) {
+    throw new Error('Не удалось загрузить фото')
+  }
+
+  const side = Math.min(image.width, image.height)
+  const sx = (image.width - side) / 2
+  const sy = (image.height - side) / 2
+  context.drawImage(image, sx, sy, side, side, 0, 0, AVATAR_SIZE, AVATAR_SIZE)
+  return canvas.toDataURL('image/jpeg', AVATAR_QUALITY)
+}
+
+export async function fitAvatarUrl(photo: string): Promise<string> {
+  return photo
 }
 
 function messageFromDetail(detail: unknown, status: number) {

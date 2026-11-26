@@ -14,7 +14,8 @@ import {
 } from '../api/auth'
 import {
   ProfileApiError,
-  canSendAvatarUrl,
+  fileToAvatarUrl,
+  fitAvatarUrl,
   getMyProfile,
   syncSessionProfile,
   updateMyProfile,
@@ -78,45 +79,6 @@ function FactItem({
   )
 }
 
-function loadPhoto(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    if (!file.type.startsWith('image/')) {
-      reject(new Error('Выберите файл изображения'))
-      return
-    }
-
-    const image = new Image()
-    const url = URL.createObjectURL(file)
-
-    image.onload = () => {
-      URL.revokeObjectURL(url)
-      const size = 256
-      const canvas = document.createElement('canvas')
-      canvas.width = size
-      canvas.height = size
-      const context = canvas.getContext('2d')
-
-      if (!context) {
-        reject(new Error('Не удалось обработать фото'))
-        return
-      }
-
-      const side = Math.min(image.width, image.height)
-      const sx = (image.width - side) / 2
-      const sy = (image.height - side) / 2
-      context.drawImage(image, sx, sy, side, side, 0, 0, size, size)
-      resolve(canvas.toDataURL('image/jpeg', 0.82))
-    }
-
-    image.onerror = () => {
-      URL.revokeObjectURL(url)
-      reject(new Error('Не удалось загрузить фото'))
-    }
-
-    image.src = url
-  })
-}
-
 export default function ProfilePage() {
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -138,21 +100,17 @@ export default function ProfilePage() {
   const [loadError, setLoadError] = useState('')
   const [saveError, setSaveError] = useState('')
 
-  const fillProfile = (next: UserProfile, keepPhoto?: string) => {
-    const resolved = {
-      ...next,
-      photo: keepPhoto ?? next.photo,
-    }
-    setProfile(resolved)
-    setFullName(resolved.fullName)
-    setPhone(resolved.phone)
-    setPhoto(resolved.photo)
-    setPosition(resolved.position)
-    setCity(resolved.city)
-    setTelegram(resolved.telegram)
-    setAbout(resolved.about)
-    setNotifyByEmail(resolved.notifyByEmail)
-    syncSessionProfile(resolved)
+  const fillProfile = (next: UserProfile) => {
+    setProfile(next)
+    setFullName(next.fullName)
+    setPhone(next.phone)
+    setPhoto(next.photo)
+    setPosition(next.position)
+    setCity(next.city)
+    setTelegram(next.telegram)
+    setAbout(next.about)
+    setNotifyByEmail(next.notifyByEmail)
+    syncSessionProfile(next)
   }
 
   useEffect(() => {
@@ -285,7 +243,7 @@ export default function ProfilePage() {
     }
 
     try {
-      const nextPhoto = await loadPhoto(file)
+      const nextPhoto = await fileToAvatarUrl(file)
       setPhoto(nextPhoto)
       setPhotoError('')
       setSaved(false)
@@ -336,22 +294,22 @@ export default function ProfilePage() {
     }
 
     const formattedTelegram = nextTelegram ? `@${nextTelegram}` : ''
-    const payload = {
-      full_name: nextName,
-      phone: nextPhone,
-      telegram: formattedTelegram,
-      city: city.trim(),
-      about: about.trim(),
-      notify_by_email: notifyByEmail,
-      position: position.trim(),
-      ...(canSendAvatarUrl(photo) ? { avatar_url: photo } : {}),
-    }
 
     setIsSaving(true)
 
     try {
-      const updated = await updateMyProfile(payload)
-      fillProfile(updated, canSendAvatarUrl(photo) ? undefined : photo)
+      const avatarUrl = await fitAvatarUrl(photo)
+      const updated = await updateMyProfile({
+        full_name: nextName,
+        phone: nextPhone,
+        telegram: formattedTelegram,
+        city: city.trim(),
+        about: about.trim(),
+        notify_by_email: notifyByEmail,
+        position: position.trim(),
+        avatar_url: avatarUrl,
+      })
+      fillProfile(updated)
       setSaved(true)
     } catch (caught) {
       if (caught instanceof ProfileApiError && caught.status === 401) {
@@ -362,7 +320,7 @@ export default function ProfilePage() {
       }
 
       setSaveError(
-        caught instanceof ProfileApiError
+        caught instanceof ProfileApiError || caught instanceof Error
           ? caught.message
           : 'Не удалось сохранить профиль',
       )
