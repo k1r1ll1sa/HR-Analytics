@@ -33,7 +33,7 @@ class ProfileUpdateRequest(BaseModel):
     """Запрос на обновление профиля"""
     full_name: Optional[str] = Field(default=None, min_length=2, max_length=255)
     phone: Optional[str] = Field(default=None, max_length=50)
-    avatar_url: Optional[str] = Field(default=None, max_length=500)
+    avatar_url: Optional[str] = Field(default=None, max_length=400_000)
     telegram: Optional[str] = Field(default=None, max_length=100)
     city: Optional[str] = Field(default=None, max_length=100)
     about: Optional[str] = Field(default=None, max_length=1000)
