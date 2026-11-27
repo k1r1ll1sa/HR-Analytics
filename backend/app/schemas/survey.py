@@ -18,13 +18,12 @@ class SessionStatus(str, enum.Enum):
     completed = "completed"
 
 
-# === СХЕМЫ ДЛЯ ВОПРОСОВ ===
 class SurveyQuestionCreate(BaseModel):
     question_text: str = Field(..., min_length=1, max_length=1000)
     question_type: QuestionType = QuestionType.slider
     order_index: Optional[int] = None
     is_required: bool = True
-    options_json: Optional[list] = None  # Для radio/checkbox
+    options_json: Optional[list] = None
 
 
 class SurveyQuestionUpdate(BaseModel):
@@ -48,7 +47,6 @@ class SurveyQuestionResponse(BaseModel):
         from_attributes = True
 
 
-# === СХЕМЫ ДЛЯ ОПРОСА ===
 class SurveyCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
@@ -86,7 +84,6 @@ class SurveyResponse(BaseModel):
         from_attributes = True
 
 
-# === СХЕМЫ ДЛЯ СЕССИИ ===
 class SurveySessionCreate(BaseModel):
     survey_id: uuid.UUID
     title: str = Field(..., min_length=1, max_length=255)
@@ -110,7 +107,6 @@ class SurveySessionResponse(BaseModel):
         from_attributes = True
 
 
-# === СХЕМЫ ДЛЯ НАЗНАЧЕНИЙ ===
 class SurveyAssignmentCreate(BaseModel):
     respondent_id: uuid.UUID
     target_id: uuid.UUID

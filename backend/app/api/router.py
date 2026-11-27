@@ -5,6 +5,7 @@ from app.api.v1.endpoints.departments import router as department_router
 from app.api.v1.endpoints.employees import router as employees_router
 from app.api.v1.endpoints.profile import router as profile_router
 from app.api.v1.endpoints.survey import router as survey_router
+from app.api.v1.endpoints.survey_fill import router as survey_fill_router
 
 api_router = APIRouter()
 
@@ -14,3 +15,4 @@ api_router.include_router(department_router)
 api_router.include_router(employees_router)
 api_router.include_router(profile_router)
 api_router.include_router(survey_router)
+api_router.include_router(survey_fill_router)

@@ -1,5 +1,6 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -156,5 +157,30 @@ async def submit_answer(
             boolean_value=answer_data.get('boolean_value')
         )
         return {"message": "Ответ сохранен", "success": True}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+class BulkAssignmentCreate(BaseModel):
+    department_ids: list[uuid.UUID] = Field(..., min_items=1)
+    exclude_employee_ids: list[uuid.UUID] = []
+
+@router.post("/{survey_id}/sessions/{session_id}/bulk-assignments", status_code=status.HTTP_201_CREATED)
+async def create_bulk_assignments(
+    company_id: uuid.UUID,
+    survey_id: uuid.UUID,
+    session_id: uuid.UUID,
+    bulk_data: BulkAssignmentCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_owner_or_hr)
+):
+    """Автоматически создать все назначения для выбранных отделов."""
+    try:
+        result = await SurveyService.bulk_create_assignments(
+            db=db,
+            session_id=session_id,
+            department_ids=bulk_data.department_ids,
+            exclude_employee_ids=bulk_data.exclude_employee_ids
+        )
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
